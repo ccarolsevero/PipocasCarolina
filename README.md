@@ -1,32 +1,36 @@
-# React + TypeScript + Vite
+# Pipocas Carolina
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Site da marca com vitrine, cardápio, carrinho, cadastro de clientes e pedidos online.
 
-Currently, two official plugins are available:
+## Desenvolvimento local
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+- Site: http://localhost:5173  
+- API: http://localhost:3001  
+
+## Produção local
+
+```bash
+npm run build
+npm start
+```
+
+## Deploy na Vercel
+
+1. Acesse [vercel.com/new](https://vercel.com/new)
+2. Importe o repositório `ccarolsevero/PipocasCarolina`
+3. Clique em **Deploy**
+
+### Persistência de clientes e pedidos (recomendado)
+
+No painel da Vercel, adicione o storage **Upstash Redis**:
+
+1. Project → **Storage** → **Create** → **Upstash Redis**
+2. Conecte ao projeto (as variáveis `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` são criadas automaticamente)
+3. Faça um novo deploy
+
+Sem o Redis, o site sobe normalmente, mas os dados podem não persistir entre requisições na Vercel.
