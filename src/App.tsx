@@ -46,8 +46,7 @@ const statusLabel: Record<Order['status'], string> = {
 function Logo() {
   return (
     <button className="logo" onClick={() => { location.hash = 'inicio' }} aria-label="Pipocas Carolina - início">
-      <span className="logo-mark">PC</span>
-      <span><b>Pipocas</b><em>Carolina</em></span>
+      <img src="/logo-pipocas-carolinas-red.png" alt="Pipocas Carolinas — Pipocas Gourmet" />
     </button>
   )
 }
