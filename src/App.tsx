@@ -309,10 +309,42 @@ function Home({ addToCart }: { addToCart: (product: Product) => void }) {
         </div>
       </section>
 
-      <section id="historia" className="story"><div className="container story-grid">
-        <div className="story-images"><img className="story-main" src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?auto=format&fit=crop&w=900&q=85" alt="Produção artesanal na cozinha" /><div className="story-note"><em>“</em><p>Tudo fica mais gostoso quando é feito com amor.</p></div></div>
-        <div className="story-copy"><span className="eyebrow">A nossa história</span><h2>De uma receita de família para a sua casa</h2><p>A Pipocas Carolina nasceu na cozinha de casa, entre conversas, risadas e aquela vontade de transformar uma receita querida em algo para compartilhar.</p><p>Hoje, cada pacote ainda é preparado do mesmo jeito: em pequenos lotes, com atenção aos detalhes e aquele toque caseiro que faz toda diferença.</p><div className="signature">Carolina <span>fundadora & pipoqueira</span></div></div>
-      </div></section>
+      <section id="historia" className="story">
+        <div className="container">
+          <div className="story-grid">
+            <div className="story-images">
+              <img className="story-main" src="/nossa-historia.webp" alt="Andressa Neves e Paloma Carolina com o carrinho da Pipocas Carolinas" />
+              <div className="story-note"><em>“</em><p>Carinho em cada detalhe, memórias em cada pacote.</p></div>
+            </div>
+            <div className="story-copy">
+              <span className="eyebrow">Nossa história 🍿🤎</span>
+              <h2>Uma empresa familiar feita de sonhos</h2>
+              <p>A Pipocas Carolinas nasceu do sonho de levar mais do que um doce para as pessoas: criar momentos especiais, transformar comemorações em lembranças e espalhar carinho em cada detalhe.</p>
+              <p>Somos uma empresa familiar, construída com dedicação, amor e muito trabalho. Cada pedido que sai da nossa cozinha carrega um pedacinho da nossa história e do cuidado que temos com cada cliente.</p>
+            </div>
+          </div>
+          <div className="story-people">
+            <article className="person-card">
+              <span className="person-number">01</span>
+              <div>
+                <small>Produção & qualidade</small>
+                <h3>Andressa Neves</h3>
+                <p>Andressa é o coração da produção da Pipocas Carolinas. É ela quem transforma ingredientes selecionados em pipocas gourmet irresistíveis, cuidando de cada etapa: do preparo à caramelização, da finalização à embalagem.</p>
+                <p>Seu carinho e atenção garantem que cada cliente receba um produto feito com qualidade, capricho e muito amor.</p>
+              </div>
+            </article>
+            <article className="person-card">
+              <span className="person-number">02</span>
+              <div>
+                <small>Marketing & comunicação</small>
+                <h3>Paloma Carolina</h3>
+                <p>Paloma é quem dá voz à Pipocas Carolinas. Ela cuida das redes sociais, da identidade visual, do relacionamento com os clientes e de cada detalhe que faz a experiência começar antes mesmo da primeira mordida.</p>
+                <p>É através da criatividade e do olhar atento que a marca continua crescendo e conquistando novos momentos para adoçar.</p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
 
       <section className="cta"><div className="container cta-inner"><div><span className="eyebrow">Já escolheu a sua?</span><h2>Seu momento merece mais sabor.</h2><p>Monte seu pedido agora e receba suas pipocas fresquinhas em casa.</p></div><a className="light-button" href="#cardapio">Quero minhas pipocas <ArrowRight size={19} /></a></div></section>
     </>
