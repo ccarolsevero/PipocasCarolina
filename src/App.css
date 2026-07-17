@@ -461,6 +461,23 @@ footer .logo img { height: 52px; max-width: 190px; content: url('/logo-pipocas-c
 .admin-form-grid textarea { min-height: 70px; resize: vertical; }
 .admin-form-grid .admin-check { flex-direction: row; align-items: center; justify-content: flex-start; }
 .admin-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.product-options-editor { margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--line); }
+.product-options-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.product-options-head h3 { margin: 0 0 5px; font-size: 17px; }
+.product-options-head p { margin: 0; color: var(--muted); font-size: 11px; }
+.product-options-head > div:last-child { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.product-options-empty { padding: 22px; border: 1px dashed var(--line); border-radius: 12px; text-align: center; color: var(--muted); font-size: 11px; }
+.product-option-group { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: #fff; margin-top: 12px; }
+.product-option-group-head { display: grid; grid-template-columns: minmax(160px, 1.4fr) 130px 80px 80px auto auto; gap: 10px; align-items: end; }
+.product-option-group-head label { display: flex; flex-direction: column; gap: 5px; color: var(--brown); font-size: 10px; font-weight: 700; }
+.product-option-group-head input, .product-option-group-head select, .product-option-choices input { min-width: 0; border: 1px solid var(--line); border-radius: 9px; background: #fff; padding: 9px 10px; font-size: 11px; outline: 0; }
+.product-option-group-head .option-price-toggle { flex-direction: row; align-items: center; padding-bottom: 9px; white-space: nowrap; }
+.option-price-toggle input { width: auto; }
+.remove-option { border: 0; background: transparent; color: var(--pink); font-size: 10px; font-weight: 700; padding: 10px 0; }
+.product-option-choices { display: flex; flex-direction: column; gap: 7px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.product-option-choices > div { display: grid; grid-template-columns: minmax(160px, 1fr) 110px 32px; gap: 7px; }
+.product-option-choices > div > button { width: 32px; height: 32px; align-self: center; border: 0; border-radius: 50%; display: grid; place-items: center; background: #fff0f0; color: var(--pink); }
+.product-option-choices .add-choice { width: fit-content; border: 0; background: transparent; color: var(--pink); font-size: 11px; font-weight: 700; padding: 6px 0 0; }
 .admin-product-list { display: flex; flex-direction: column; gap: 12px; }
 .admin-product { display: grid; grid-template-columns: 64px minmax(180px, 1fr) auto minmax(360px, 1.4fr); align-items: center; gap: 14px; border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
 .admin-product.low { border-color: #ffb5b5; background: #fffafa; }
@@ -747,6 +764,13 @@ footer .logo img { height: 52px; max-width: 190px; content: url('/logo-pipocas-c
   .admin-module-head .primary-button { width: 100%; }
   .admin-form-grid { grid-template-columns: 1fr; }
   .admin-form-grid label.wide { grid-column: auto; }
+  .product-options-head { flex-direction: column; }
+  .product-options-head > div:last-child { width: 100%; justify-content: flex-start; }
+  .product-options-head .ghost-button { flex: 1; justify-content: center; }
+  .product-option-group-head { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .product-option-group-head > label:first-child { grid-column: 1 / -1; }
+  .product-option-group-head .option-price-toggle { padding: 9px 0; }
+  .product-option-choices > div { grid-template-columns: 1fr 90px 32px; }
   .admin-product { grid-template-columns: 55px 1fr; }
   .admin-product > img { width: 55px; height: 55px; }
   .admin-product > .ghost-button, .admin-product > .stock-form { grid-column: 1 / -1; }

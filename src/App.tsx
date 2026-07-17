@@ -1049,6 +1049,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | null>(null)
   const [productFormOpen, setProductFormOpen] = useState(false)
   const [productImagePreview, setProductImagePreview] = useState('')
+  const [productOptions, setProductOptions] = useState<OptionGroup[]>([])
 
   async function loadDashboard() {
     const [nextOrders, nextSummary, nextProducts, nextCustomers, nextMovements, nextExpenses] = await Promise.all([
@@ -1201,11 +1202,18 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
         minStock: Number(data.get('minStock')) || 0,
         stockQty: editingProduct ? editingProduct.stockQty : Number(data.get('stockQty')) || 0,
         active: data.get('active') === 'on',
-        options: editingProduct?.options || [],
+        options: productOptions
+          .map((group) => ({
+            ...group,
+            label: group.label.trim(),
+            choices: group.choices.filter((choice) => choice.label.trim()),
+          }))
+          .filter((group) => group.label && group.choices.length),
       })
       setProductFormOpen(false)
       setEditingProduct(null)
       setProductImagePreview('')
+      setProductOptions([])
       await loadDashboard()
       onToast('Produto salvo com sucesso')
     } catch (error) {
@@ -1213,6 +1221,67 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  function openNewProduct() {
+    setEditingProduct(null)
+    setProductImagePreview('')
+    setProductOptions([])
+    setProductFormOpen(true)
+  }
+
+  function openProductEditor(product: CatalogProduct) {
+    setEditingProduct(product)
+    setProductImagePreview(product.image)
+    setProductOptions(product.options.map((group) => ({
+      ...group,
+      choices: group.choices.map((choice) => ({ ...choice })),
+    })))
+    setProductFormOpen(true)
+  }
+
+  function addOptionGroup(kind: 'size' | 'flavor' | 'custom') {
+    const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
+    if (kind === 'size') {
+      setProductOptions((current) => [...current, {
+        id: `size-${suffix}`,
+        label: 'Peso / tamanho',
+        type: 'single',
+        priceMode: 'replace',
+        choices: [{ label: '100g', price: 0 }],
+      }])
+      return
+    }
+    if (kind === 'flavor') {
+      setProductOptions((current) => [...current, {
+        id: `flavor-${suffix}`,
+        label: 'Sabor',
+        type: 'single',
+        choices: FLAVORS.map((label) => ({ label })),
+      }])
+      return
+    }
+    setProductOptions((current) => [...current, {
+      id: `option-${suffix}`,
+      label: 'Nova opção',
+      type: 'single',
+      choices: [{ label: '' }],
+    }])
+  }
+
+  function updateOptionGroup(index: number, patch: Partial<OptionGroup>) {
+    setProductOptions((current) => current.map((group, groupIndex) =>
+      groupIndex === index ? { ...group, ...patch } : group,
+    ))
+  }
+
+  function updateOptionChoice(groupIndex: number, choiceIndex: number, patch: Partial<OptionChoice>) {
+    setProductOptions((current) => current.map((group, index) => index === groupIndex ? {
+      ...group,
+      choices: group.choices.map((choice, itemIndex) =>
+        itemIndex === choiceIndex ? { ...choice, ...patch } : choice,
+      ),
+    } : group))
   }
 
   async function handleExpense(event: FormEvent<HTMLFormElement>) {
@@ -1331,7 +1400,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
           <div className="admin-module">
             <div className="admin-module-head">
               <div><h2>Produtos e estoque</h2><p>Cadastre produtos e registre entradas, perdas ou ajustes.</p></div>
-              <button className="primary-button" onClick={() => { setEditingProduct(null); setProductImagePreview(''); setProductFormOpen(true) }}>Novo produto</button>
+              <button className="primary-button" onClick={openNewProduct}>Novo produto</button>
             </div>
 
             {productFormOpen && (
@@ -1367,8 +1436,115 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
                   <label className="wide">Descrição<textarea name="description" defaultValue={editingProduct?.description} /></label>
                   <label className="admin-check"><input name="active" type="checkbox" defaultChecked={editingProduct?.active ?? true} /> Produto ativo</label>
                 </div>
+                <div className="product-options-editor">
+                  <div className="product-options-head">
+                    <div>
+                      <h3>Pesos, tamanhos e sabores</h3>
+                      <p>Adicione quantas opções precisar. Pesos e tamanhos podem ter preços diferentes.</p>
+                    </div>
+                    <div>
+                      <button type="button" className="ghost-button" onClick={() => addOptionGroup('size')}>+ Peso / tamanho</button>
+                      <button type="button" className="ghost-button" onClick={() => addOptionGroup('flavor')}>+ Sabores</button>
+                      <button type="button" className="ghost-button" onClick={() => addOptionGroup('custom')}>+ Outra opção</button>
+                    </div>
+                  </div>
+
+                  {productOptions.length === 0 && (
+                    <div className="product-options-empty">Este produto ainda não possui pesos, tamanhos ou sabores cadastrados.</div>
+                  )}
+
+                  {productOptions.map((group, groupIndex) => (
+                    <div className="product-option-group" key={group.id}>
+                      <div className="product-option-group-head">
+                        <label>
+                          Nome da opção
+                          <input
+                            value={group.label}
+                            onChange={(event) => updateOptionGroup(groupIndex, { label: event.target.value })}
+                            placeholder="Ex.: Peso, tamanho ou sabor"
+                          />
+                        </label>
+                        <label>
+                          Escolha
+                          <select
+                            value={group.type}
+                            onChange={(event) => updateOptionGroup(groupIndex, { type: event.target.value as 'single' | 'multi' })}
+                          >
+                            <option value="single">Uma opção</option>
+                            <option value="multi">Várias opções</option>
+                          </select>
+                        </label>
+                        {group.type === 'multi' && (
+                          <>
+                            <label>Mínimo<input type="number" min="0" value={group.min ?? 0} onChange={(event) => updateOptionGroup(groupIndex, { min: Number(event.target.value) })} /></label>
+                            <label>Máximo<input type="number" min="1" value={group.max ?? 1} onChange={(event) => updateOptionGroup(groupIndex, { max: Number(event.target.value) })} /></label>
+                          </>
+                        )}
+                        <label className="option-price-toggle">
+                          <input
+                            type="checkbox"
+                            checked={group.priceMode === 'replace'}
+                            onChange={(event) => updateOptionGroup(groupIndex, { priceMode: event.target.checked ? 'replace' : undefined })}
+                          />
+                          Preço por opção
+                        </label>
+                        <button
+                          type="button"
+                          className="remove-option"
+                          onClick={() => setProductOptions((current) => current.filter((_, index) => index !== groupIndex))}
+                        >
+                          Remover grupo
+                        </button>
+                      </div>
+
+                      <div className="product-option-choices">
+                        {group.choices.map((choice, choiceIndex) => (
+                          <div key={`${group.id}-${choiceIndex}`}>
+                            <input
+                              value={choice.label}
+                              onChange={(event) => updateOptionChoice(groupIndex, choiceIndex, { label: event.target.value })}
+                              placeholder="Ex.: 100g, 1L ou Ninho"
+                              aria-label="Nome da opção"
+                            />
+                            {group.priceMode === 'replace' && (
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={choice.price ?? ''}
+                                onChange={(event) => updateOptionChoice(groupIndex, choiceIndex, {
+                                  price: event.target.value === '' ? undefined : Number(event.target.value),
+                                })}
+                                placeholder="Preço"
+                                aria-label="Preço da opção"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              aria-label="Remover opção"
+                              onClick={() => updateOptionGroup(groupIndex, {
+                                choices: group.choices.filter((_, index) => index !== choiceIndex),
+                              })}
+                            >
+                              <X size={15} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          className="add-choice"
+                          onClick={() => updateOptionGroup(groupIndex, {
+                            choices: [...group.choices, { label: '', price: group.priceMode === 'replace' ? 0 : undefined }],
+                          })}
+                        >
+                          + Adicionar item
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 <div className="admin-form-actions">
-                  <button type="button" className="ghost-button" onClick={() => { setProductFormOpen(false); setProductImagePreview('') }}>Cancelar</button>
+                  <button type="button" className="ghost-button" onClick={() => { setProductFormOpen(false); setProductImagePreview(''); setProductOptions([]) }}>Cancelar</button>
                   <button className="primary-button" disabled={loading}>{loading ? 'Salvando...' : 'Salvar produto'}</button>
                 </div>
               </form>
@@ -1383,7 +1559,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
                     <span>{product.category} · {money(product.price)} · {product.active ? 'Ativo' : 'Inativo'}</span>
                     <b>Estoque: {product.stockQty} {product.unit}{product.stockQty <= product.minStock ? ' · Estoque baixo' : ''}</b>
                   </div>
-                  <button className="ghost-button" onClick={() => { setEditingProduct(product); setProductImagePreview(product.image); setProductFormOpen(true) }}>Editar</button>
+                  <button className="ghost-button" onClick={() => openProductEditor(product)}>Editar</button>
                   <form className="stock-form" onSubmit={(event) => handleStock(event, product)}>
                     <select name="type" aria-label="Tipo de movimentação">
                       <option value="entrada">Entrada</option>
