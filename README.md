@@ -1,16 +1,33 @@
 # Pipocas Carolina
 
-Site da marca com vitrine, cardápio, carrinho, cadastro de clientes e pedidos online.
+Site da marca com vitrine, cardápio, carrinho, cadastro de clientes, pedidos online e painel administrativo.
 
 ## Desenvolvimento local
 
 ```bash
 npm install
+cp .env.example .env
 npm run dev
 ```
 
 - Site: http://localhost:5173  
 - API: http://localhost:3001  
+- Admin: http://localhost:5173/#admin  
+
+Para o painel funcionar localmente, defina no `.env` (ou no ambiente do terminal):
+
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `ADMIN_SESSION_SECRET`
+
+Exemplo rápido:
+
+```bash
+export ADMIN_EMAIL=admin@exemplo.com
+export ADMIN_PASSWORD=senha-forte
+export ADMIN_SESSION_SECRET=segredo-longo-aleatorio
+npm run dev
+```
 
 ## Produção local
 
@@ -23,7 +40,12 @@ npm start
 
 1. Acesse [vercel.com/new](https://vercel.com/new)
 2. Importe o repositório `ccarolsevero/PipocasCarolina`
-3. Clique em **Deploy**
+3. Em **Settings → Environment Variables**, adicione:
+   - `ADMIN_EMAIL`
+   - `ADMIN_PASSWORD`
+   - `ADMIN_SESSION_SECRET`
+4. Clique em **Deploy**
+5. Acesse `https://seu-dominio.vercel.app/#admin`
 
 ### Persistência de clientes e pedidos (recomendado)
 

@@ -3,10 +3,20 @@ import express from 'express'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  clearAdminSessionCookie,
+  loginAdmin,
+  readAdminSession,
+  requireAdmin,
+  setAdminSessionCookie,
+} from './adminAuth.js'
+import {
   createOrder,
   findCustomerByEmail,
   findCustomerById,
+  getAdminSummary,
+  listAllOrdersWithCustomers,
   listOrdersByCustomer,
+  updateOrderStatus,
   upsertCustomer,
 } from './db.js'
 
@@ -132,6 +142,66 @@ app.get('/api/orders', async (req, res) => {
   } catch (error) {
     console.error(error)
     res.status(500).json({ error: 'Erro ao listar pedidos.' })
+  }
+})
+
+app.post('/api/admin/login', (req, res) => {
+  try {
+    const { email, password } = req.body || {}
+    const result = loginAdmin(email, password)
+
+    if (!result.ok) {
+      return res.status(result.error.includes('configurado') ? 503 : 401).json({ error: result.error })
+    }
+
+    setAdminSessionCookie(res, result.token, isProd)
+    res.json({ email: result.email })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Erro ao autenticar administrador.' })
+  }
+})
+
+app.post('/api/admin/logout', (_req, res) => {
+  clearAdminSessionCookie(res, isProd)
+  res.json({ ok: true })
+})
+
+app.get('/api/admin/session', (req, res) => {
+  const session = readAdminSession(req)
+  if (!session) return res.status(401).json({ error: 'Sessão administrativa inválida.' })
+  res.json({ email: session.email })
+})
+
+app.get('/api/admin/summary', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await getAdminSummary())
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Erro ao carregar resumo administrativo.' })
+  }
+})
+
+app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await listAllOrdersWithCustomers())
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Erro ao listar pedidos administrativos.' })
+  }
+})
+
+app.patch('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const status = String(req.body?.status || '')
+    const order = await updateOrderStatus(req.params.id, status)
+
+    if (!order) return res.status(404).json({ error: 'Pedido não encontrado.' })
+    res.json(order)
+  } catch (error) {
+    console.error(error)
+    const message = error.message || 'Erro ao atualizar status do pedido.'
+    res.status(message.includes('inválido') ? 400 : 500).json({ error: message })
   }
 })
 
