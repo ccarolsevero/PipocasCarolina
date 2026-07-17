@@ -6,17 +6,28 @@ import {
   Sparkles, Trash2, UserRound, Wheat, X,
 } from 'lucide-react'
 import {
+  adjustAdminStock,
   adminLogin,
   adminLogout,
+  createExpense,
   createOrder,
+  fetchAdminCustomers,
   fetchAdminOrders,
+  fetchAdminProducts,
   fetchAdminSession,
   fetchAdminSummary,
+  fetchExpenses,
+  fetchInventoryMovements,
   fetchOrders,
+  fetchProducts,
   registerCustomer,
+  saveAdminProduct,
   updateAdminOrderStatus,
+  updateAdminPaymentStatus,
 } from './api'
-import type { AdminOrder, AdminSummary, Customer, Order } from './api'
+import type {
+  AdminOrder, AdminSummary, CatalogProduct, Customer, Expense, InventoryMovement, Order,
+} from './api'
 import './App.css'
 
 type OptionChoice = { label: string; price?: number }
@@ -65,7 +76,7 @@ const FILLINGS = ['KitKat', 'Creme', 'Ovomaltine', 'Nutella']
 const flavorChoices = FLAVORS.map((label) => ({ label }))
 const fillingChoices = FILLINGS.map((label) => ({ label }))
 
-const products: Product[] = [
+const fallbackProducts: Product[] = [
   {
     id: 1,
     name: 'Pipoca Gourmet',
@@ -262,6 +273,7 @@ const statusLabel: Record<Order['status'], string> = {
   preparando: 'Em preparo',
   entregando: 'Saiu para entrega',
   entregue: 'Entregue',
+  cancelado: 'Cancelado',
 }
 
 function Logo() {
@@ -301,6 +313,7 @@ function App() {
     return saved
   })
   const [orders, setOrders] = useState<Order[]>([])
+  const [catalog, setCatalog] = useState<Product[]>(fallbackProducts)
   const [cartOpen, setCartOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
@@ -326,6 +339,16 @@ function App() {
   useEffect(() => localStorage.setItem('pc-cart', JSON.stringify(cart)), [cart])
 
   useEffect(() => {
+    fetchProducts()
+      .then((items) => {
+        if (items.length) setCatalog(items)
+      })
+      .catch(() => {
+        // Keep the local catalog available if the API is temporarily offline.
+      })
+  }, [])
+
+  useEffect(() => {
     if (!toast) return
     const timer = setTimeout(() => setToast(''), 2500)
     return () => clearTimeout(timer)
@@ -344,7 +367,7 @@ function App() {
 
   const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0)
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const filtered = products.filter((product) =>
+  const filtered = catalog.filter((product) =>
     (category === 'Todos' || product.category === category) &&
     product.name.toLowerCase().includes(search.toLowerCase()),
   )
@@ -490,7 +513,7 @@ function App() {
       </header>
 
       <main>
-        {page === 'inicio' && <Home addToCart={requestAddToCart} />}
+        {page === 'inicio' && <Home products={catalog} addToCart={requestAddToCart} />}
         {page === 'cardapio' && (
           <section className="menu-page">
             <div className="page-hero">
@@ -516,7 +539,7 @@ function App() {
           </section>
         )}
         {page === 'pedidos' && <Orders user={user} orders={orders} onLogin={() => setAuthOpen(true)} />}
-        {page === 'festas' && <Festas addToCart={requestAddToCart} />}
+        {page === 'festas' && <Festas products={catalog} addToCart={requestAddToCart} />}
         {page === 'admin' && <AdminPage onToast={setToast} />}
       </main>
 
@@ -549,7 +572,7 @@ function App() {
   )
 }
 
-function Festas({ addToCart }: { addToCart: (product: Product) => void }) {
+function Festas({ products, addToCart }: { products: Product[]; addToCart: (product: Product) => void }) {
   const favorProduct = products.find((product) => product.id === 8)
   const kiloProduct = products.find((product) => product.id === 7)
   const whatsOrcamento = 'https://wa.me/5519995755409?text=Ol%C3%A1!%20Gostaria%20de%20solicitar%20um%20or%C3%A7amento%20para%20festas%20e%20eventos%20da%20Pipocas%20Carolinas.'
@@ -630,7 +653,7 @@ function Festas({ addToCart }: { addToCart: (product: Product) => void }) {
   )
 }
 
-function Home({ addToCart }: { addToCart: (product: Product) => void }) {
+function Home({ products, addToCart }: { products: Product[]; addToCart: (product: Product) => void }) {
   return (
     <>
       <section className="hero-section">
@@ -1006,7 +1029,7 @@ function Orders({ user, orders, onLogin }: { user: Customer | null; orders: Orde
   )
 }
 
-const adminStatuses: Order['status'][] = ['preparando', 'entregando', 'entregue']
+const adminStatuses: Order['status'][] = ['preparando', 'entregando', 'entregue', 'cancelado']
 
 function AdminPage({ onToast }: { onToast: (message: string) => void }) {
   const [session, setSession] = useState<string | null>(null)
@@ -1017,11 +1040,29 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'todos' | Order['status']>('todos')
   const [updatingId, setUpdatingId] = useState<number | null>(null)
+  const [tab, setTab] = useState<'pedidos' | 'produtos' | 'clientes' | 'financeiro'>('pedidos')
+  const [adminProducts, setAdminProducts] = useState<CatalogProduct[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [movements, setMovements] = useState<InventoryMovement[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [editingProduct, setEditingProduct] = useState<CatalogProduct | null>(null)
+  const [productFormOpen, setProductFormOpen] = useState(false)
 
   async function loadDashboard() {
-    const [nextOrders, nextSummary] = await Promise.all([fetchAdminOrders(), fetchAdminSummary()])
+    const [nextOrders, nextSummary, nextProducts, nextCustomers, nextMovements, nextExpenses] = await Promise.all([
+      fetchAdminOrders(),
+      fetchAdminSummary(),
+      fetchAdminProducts(),
+      fetchAdminCustomers(),
+      fetchInventoryMovements(),
+      fetchExpenses(),
+    ])
     setOrders(nextOrders)
     setSummary(nextSummary)
+    setAdminProducts(nextProducts)
+    setCustomers(nextCustomers)
+    setMovements(nextMovements)
+    setExpenses(nextExpenses)
   }
 
   useEffect(() => {
@@ -1098,6 +1139,95 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
     }
   }
 
+  async function handlePaymentChange(orderId: number, paymentStatus: NonNullable<Order['paymentStatus']>) {
+    setUpdatingId(orderId)
+    try {
+      const updated = await updateAdminPaymentStatus(orderId, paymentStatus)
+      setOrders((current) => current.map((order) => (order.id === orderId ? updated : order)))
+      setSummary(await fetchAdminSummary())
+      onToast(`Pagamento do pedido #${updated.code} atualizado`)
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : 'Erro ao atualizar pagamento')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  async function handleStock(event: FormEvent<HTMLFormElement>, product: CatalogProduct) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    setUpdatingId(product.id)
+    try {
+      await adjustAdminStock({
+        productId: product.id,
+        quantity: Number(data.get('quantity')),
+        type: String(data.get('type')) as 'entrada' | 'ajuste' | 'perda',
+        note: String(data.get('note') || ''),
+      })
+      await loadDashboard()
+      form.reset()
+      onToast(`Estoque de ${product.name} atualizado`)
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : 'Erro ao atualizar estoque')
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  async function handleProductSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    setLoading(true)
+    try {
+      await saveAdminProduct({
+        ...(editingProduct || {}),
+        name: String(data.get('name')),
+        description: String(data.get('description') || ''),
+        price: Number(data.get('price')),
+        category: String(data.get('category') || 'Geral'),
+        unit: String(data.get('unit') || 'unidade'),
+        image: String(data.get('image') || ''),
+        tag: String(data.get('tag') || ''),
+        minQuantity: Number(data.get('minQuantity')) || 1,
+        minStock: Number(data.get('minStock')) || 0,
+        stockQty: editingProduct ? editingProduct.stockQty : Number(data.get('stockQty')) || 0,
+        active: data.get('active') === 'on',
+        options: editingProduct?.options || [],
+      })
+      setProductFormOpen(false)
+      setEditingProduct(null)
+      await loadDashboard()
+      onToast('Produto salvo com sucesso')
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : 'Erro ao salvar produto')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleExpense(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const form = event.currentTarget
+    const data = new FormData(form)
+    setLoading(true)
+    try {
+      await createExpense({
+        description: String(data.get('description')),
+        amount: Number(data.get('amount')),
+        category: String(data.get('category') || 'Geral'),
+        spentAt: String(data.get('spentAt')),
+      })
+      form.reset()
+      await loadDashboard()
+      onToast('Despesa registrada')
+    } catch (error) {
+      onToast(error instanceof Error ? error.message : 'Erro ao registrar despesa')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filtered = orders.filter((order) => {
     const matchesStatus = statusFilter === 'todos' || order.status === statusFilter
     const query = search.trim().toLowerCase()
@@ -1169,12 +1299,138 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
         <div className="admin-stats">
           <article><span>Pedidos</span><strong>{summary?.totalOrders ?? 0}</strong></article>
           <article><span>Clientes</span><strong>{summary?.totalCustomers ?? 0}</strong></article>
-          <article><span>Em preparo</span><strong>{summary?.preparando ?? 0}</strong></article>
-          <article><span>Em entrega</span><strong>{summary?.entregando ?? 0}</strong></article>
-          <article><span>Entregues</span><strong>{summary?.entregue ?? 0}</strong></article>
-          <article><span>Faturamento</span><strong>{money(summary?.revenue ?? 0)}</strong></article>
+          <article><span>Produtos ativos</span><strong>{summary?.activeProducts ?? 0}</strong></article>
+          <article><span>Estoque baixo</span><strong>{summary?.lowStock ?? 0}</strong></article>
+          <article><span>Recebido</span><strong>{money(summary?.paidRevenue ?? 0)}</strong></article>
+          <article><span>Lucro estimado</span><strong>{money(summary?.profitEstimate ?? 0)}</strong></article>
         </div>
 
+        <div className="admin-tabs">
+          {([
+            ['pedidos', 'Pedidos'],
+            ['produtos', 'Produtos e estoque'],
+            ['clientes', 'Clientes'],
+            ['financeiro', 'Financeiro'],
+          ] as const).map(([value, label]) => (
+            <button key={value} className={tab === value ? 'active' : ''} onClick={() => setTab(value)}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {tab === 'produtos' && (
+          <div className="admin-module">
+            <div className="admin-module-head">
+              <div><h2>Produtos e estoque</h2><p>Cadastre produtos e registre entradas, perdas ou ajustes.</p></div>
+              <button className="primary-button" onClick={() => { setEditingProduct(null); setProductFormOpen(true) }}>Novo produto</button>
+            </div>
+
+            {productFormOpen && (
+              <form className="admin-form-card" onSubmit={handleProductSave}>
+                <div className="admin-form-grid">
+                  <label>Nome<input name="name" required defaultValue={editingProduct?.name} /></label>
+                  <label>Preço<input name="price" type="number" min="0" step="0.01" required defaultValue={editingProduct?.price} /></label>
+                  <label>Categoria<input name="category" required defaultValue={editingProduct?.category || 'Geral'} /></label>
+                  <label>Unidade<input name="unit" required defaultValue={editingProduct?.unit || 'unidade'} /></label>
+                  <label>Estoque mínimo<input name="minStock" type="number" min="0" defaultValue={editingProduct?.minStock ?? 5} /></label>
+                  {!editingProduct && <label>Estoque inicial<input name="stockQty" type="number" min="0" defaultValue="0" /></label>}
+                  <label>Quantidade mínima<input name="minQuantity" type="number" min="1" defaultValue={editingProduct?.minQuantity ?? 1} /></label>
+                  <label>Etiqueta<input name="tag" defaultValue={editingProduct?.tag} /></label>
+                  <label className="wide">Imagem (URL)<input name="image" defaultValue={editingProduct?.image} /></label>
+                  <label className="wide">Descrição<textarea name="description" defaultValue={editingProduct?.description} /></label>
+                  <label className="admin-check"><input name="active" type="checkbox" defaultChecked={editingProduct?.active ?? true} /> Produto ativo</label>
+                </div>
+                <div className="admin-form-actions">
+                  <button type="button" className="ghost-button" onClick={() => setProductFormOpen(false)}>Cancelar</button>
+                  <button className="primary-button" disabled={loading}>{loading ? 'Salvando...' : 'Salvar produto'}</button>
+                </div>
+              </form>
+            )}
+
+            <div className="admin-product-list">
+              {adminProducts.map((product) => (
+                <article className={product.stockQty <= product.minStock ? 'admin-product low' : 'admin-product'} key={product.id}>
+                  <img src={product.image} alt="" />
+                  <div className="admin-product-info">
+                    <strong>{product.name}</strong>
+                    <span>{product.category} · {money(product.price)} · {product.active ? 'Ativo' : 'Inativo'}</span>
+                    <b>Estoque: {product.stockQty} {product.unit}{product.stockQty <= product.minStock ? ' · Estoque baixo' : ''}</b>
+                  </div>
+                  <button className="ghost-button" onClick={() => { setEditingProduct(product); setProductFormOpen(true) }}>Editar</button>
+                  <form className="stock-form" onSubmit={(event) => handleStock(event, product)}>
+                    <select name="type" aria-label="Tipo de movimentação">
+                      <option value="entrada">Entrada</option>
+                      <option value="perda">Perda</option>
+                      <option value="ajuste">Definir saldo</option>
+                    </select>
+                    <input name="quantity" type="number" min="0" required placeholder="Qtd." aria-label="Quantidade" />
+                    <input name="note" placeholder="Observação" aria-label="Observação" />
+                    <button className="primary-button" disabled={updatingId === product.id}>Aplicar</button>
+                  </form>
+                </article>
+              ))}
+            </div>
+
+            <div className="admin-history">
+              <h3>Últimas movimentações</h3>
+              {movements.slice(0, 12).map((movement) => (
+                <div key={movement.id}>
+                  <span><b>{movement.productName}</b><small>{movement.type} · {movement.note || 'Sem observação'}</small></span>
+                  <strong className={movement.quantity >= 0 ? 'positive' : 'negative'}>{movement.quantity > 0 ? '+' : ''}{movement.quantity}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === 'clientes' && (
+          <div className="admin-module">
+            <div className="admin-module-head"><div><h2>Clientes</h2><p>{customers.length} clientes cadastrados no banco.</p></div></div>
+            <div className="admin-table-wrap">
+              <table className="admin-table">
+                <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Cadastro</th></tr></thead>
+                <tbody>{customers.map((customer) => (
+                  <tr key={customer.id}>
+                    <td><b>{customer.name}</b></td><td>{customer.email}</td><td>{customer.phone}</td>
+                    <td>{new Date(customer.createdAt).toLocaleDateString('pt-BR')}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {tab === 'financeiro' && (
+          <div className="admin-module">
+            <div className="admin-module-head"><div><h2>Financeiro</h2><p>Valores recebidos, pendentes e despesas registradas.</p></div></div>
+            <div className="finance-cards">
+              <article><span>Vendas</span><strong>{money(summary?.revenue ?? 0)}</strong></article>
+              <article><span>Recebido</span><strong>{money(summary?.paidRevenue ?? 0)}</strong></article>
+              <article><span>A receber</span><strong>{money(summary?.pendingPayments ?? 0)}</strong></article>
+              <article><span>Despesas</span><strong>{money(summary?.expensesTotal ?? 0)}</strong></article>
+              <article><span>Lucro estimado</span><strong>{money(summary?.profitEstimate ?? 0)}</strong></article>
+            </div>
+            <form className="expense-form" onSubmit={handleExpense}>
+              <h3>Registrar despesa</h3>
+              <input name="description" required placeholder="Descrição" />
+              <input name="amount" type="number" min="0" step="0.01" required placeholder="Valor" />
+              <input name="category" required placeholder="Categoria" />
+              <input name="spentAt" type="date" required defaultValue={new Date().toISOString().slice(0, 10)} />
+              <button className="primary-button" disabled={loading}>Adicionar</button>
+            </form>
+            <div className="admin-history">
+              <h3>Despesas</h3>
+              {expenses.map((expense) => (
+                <div key={expense.id}>
+                  <span><b>{expense.description}</b><small>{expense.category} · {new Date(`${expense.spentAt}T12:00:00`).toLocaleDateString('pt-BR')}</small></span>
+                  <strong className="negative">-{money(expense.amount)}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {tab === 'pedidos' && (<>
         <div className="admin-tools">
           <label className="search">
             <Search size={18} />
@@ -1213,18 +1469,32 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
                     <h3>{order.customer?.name || 'Cliente não encontrado'}</h3>
                     <small>{new Date(order.createdAt).toLocaleString('pt-BR')}</small>
                   </div>
-                  <label className="admin-status-select">
-                    Status
-                    <select
-                      value={order.status === 'confirmado' ? 'preparando' : order.status}
-                      disabled={updatingId === order.id}
-                      onChange={(e) => handleStatusChange(order.id, e.target.value as Order['status'])}
-                    >
-                      {adminStatuses.map((status) => (
-                        <option key={status} value={status}>{statusLabel[status]}</option>
-                      ))}
-                    </select>
-                  </label>
+                  <div className="admin-order-selects">
+                    <label className="admin-status-select">
+                      Status do pedido
+                      <select
+                        value={order.status === 'confirmado' ? 'preparando' : order.status}
+                        disabled={updatingId === order.id}
+                        onChange={(e) => handleStatusChange(order.id, e.target.value as Order['status'])}
+                      >
+                        {adminStatuses.map((status) => (
+                          <option key={status} value={status}>{statusLabel[status]}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="admin-status-select">
+                      Pagamento
+                      <select
+                        value={order.paymentStatus || 'pendente'}
+                        disabled={updatingId === order.id}
+                        onChange={(e) => handlePaymentChange(order.id, e.target.value as NonNullable<Order['paymentStatus']>)}
+                      >
+                        <option value="pendente">Pendente</option>
+                        <option value="pago">Pago</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="admin-order-grid">
@@ -1265,6 +1535,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
             ))}
           </div>
         )}
+        </>)}
       </div>
     </section>
   )

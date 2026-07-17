@@ -12,13 +12,16 @@
     "build": "tsc -b && vite build",
     "start": "NODE_ENV=production node server/index.js",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "db:schema": "node scripts/apply-schema.mjs",
+    "db:seed": "node scripts/seed-products.mjs"
   },
   "dependencies": {
-    "@upstash/redis": "^1.38.0",
+    "@supabase/supabase-js": "^2.110.7",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "lucide-react": "^1.24.0",
+    "pg": "^8.22.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
@@ -26,6 +29,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^24.13.2",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",

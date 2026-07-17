@@ -19,6 +19,8 @@ Para o painel funcionar localmente, defina no `.env` (ou no ambiente do terminal
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `ADMIN_SESSION_SECRET`
+- `SUPABASE_URL`
+- `SUPABASE_SECRET_KEY`
 
 Exemplo rápido:
 
@@ -44,15 +46,18 @@ npm start
    - `ADMIN_EMAIL`
    - `ADMIN_PASSWORD`
    - `ADMIN_SESSION_SECRET`
+   - `SUPABASE_URL` (a integração também pode fornecer `NEXT_PUBLIC_SUPABASE_URL`)
+   - `SUPABASE_SECRET_KEY`
 4. Clique em **Deploy**
 5. Acesse `https://seu-dominio.vercel.app/#admin`
 
-### Persistência de clientes e pedidos (recomendado)
+### Banco Supabase
 
-No painel da Vercel, adicione o storage **Upstash Redis**:
+O Supabase armazena clientes, produtos, estoque, pedidos, movimentações e despesas.
 
-1. Project → **Storage** → **Create** → **Upstash Redis**
-2. Conecte ao projeto (as variáveis `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN` são criadas automaticamente)
-3. Faça um novo deploy
+```bash
+npm run db:schema
+npm run db:seed
+```
 
-Sem o Redis, o site sobe normalmente, mas os dados podem não persistir entre requisições na Vercel.
+O schema fica em `supabase/schema.sql`. A chave secreta do Supabase deve existir somente no backend e nas variáveis protegidas da Vercel.

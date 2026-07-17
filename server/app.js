@@ -10,13 +10,22 @@ import {
   setAdminSessionCookie,
 } from './adminAuth.js'
 import {
+  adjustStock,
+  createExpense,
   createOrder,
+  createProduct,
   findCustomerByEmail,
   findCustomerById,
   getAdminSummary,
   listAllOrdersWithCustomers,
+  listCustomers,
+  listExpenses,
+  listInventoryMovements,
   listOrdersByCustomer,
+  listProducts,
   updateOrderStatus,
+  updatePaymentStatus,
+  updateProduct,
   upsertCustomer,
 } from './db.js'
 
@@ -29,7 +38,7 @@ const app = express()
 
 app.disable('x-powered-by')
 app.set('trust proxy', 1)
-app.use(express.json({ limit: '100kb' }))
+app.use(express.json({ limit: '200kb' }))
 
 if (!isProd || !isVercel) {
   app.use(cors())
@@ -41,6 +50,15 @@ app.get('/api/health', (_req, res) => {
     env: isProd ? 'production' : 'development',
     platform: isVercel ? 'vercel' : 'node',
   })
+})
+
+app.get('/api/products', async (_req, res) => {
+  try {
+    res.json(await listProducts({ activeOnly: true }))
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: error.message || 'Erro ao listar produtos.' })
+  }
 })
 
 app.post('/api/customers', async (req, res) => {
@@ -126,7 +144,7 @@ app.post('/api/orders', async (req, res) => {
     res.status(201).json(order)
   } catch (error) {
     console.error(error)
-    res.status(500).json({ error: error.message || 'Erro ao criar pedido.' })
+    res.status(400).json({ error: error.message || 'Erro ao criar pedido.' })
   }
 })
 
@@ -193,15 +211,99 @@ app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
 
 app.patch('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
   try {
-    const status = String(req.body?.status || '')
-    const order = await updateOrderStatus(req.params.id, status)
-
-    if (!order) return res.status(404).json({ error: 'Pedido não encontrado.' })
+    const order = await updateOrderStatus(req.params.id, String(req.body?.status || ''))
     res.json(order)
   } catch (error) {
     console.error(error)
     const message = error.message || 'Erro ao atualizar status do pedido.'
     res.status(message.includes('inválido') ? 400 : 500).json({ error: message })
+  }
+})
+
+app.patch('/api/admin/orders/:id/payment', requireAdmin, async (req, res) => {
+  try {
+    const order = await updatePaymentStatus(req.params.id, String(req.body?.paymentStatus || ''))
+    res.json(order)
+  } catch (error) {
+    console.error(error)
+    const message = error.message || 'Erro ao atualizar pagamento.'
+    res.status(message.includes('inválido') ? 400 : 500).json({ error: message })
+  }
+})
+
+app.get('/api/admin/customers', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await listCustomers())
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Erro ao listar clientes.' })
+  }
+})
+
+app.get('/api/admin/products', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await listProducts())
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Erro ao listar produtos.' })
+  }
+})
+
+app.post('/api/admin/products', requireAdmin, async (req, res) => {
+  try {
+    const product = await createProduct(req.body || {})
+    res.status(201).json(product)
+  } catch (error) {
+    console.error(error)
+    res.status(400).json({ error: error.message || 'Erro ao criar produto.' })
+  }
+})
+
+app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
+  try {
+    const product = await updateProduct(req.params.id, req.body || {})
+    res.json(product)
+  } catch (error) {
+    console.error(error)
+    res.status(400).json({ error: error.message || 'Erro ao atualizar produto.' })
+  }
+})
+
+app.post('/api/admin/inventory', requireAdmin, async (req, res) => {
+  try {
+    const product = await adjustStock(req.body || {})
+    res.json(product)
+  } catch (error) {
+    console.error(error)
+    res.status(400).json({ error: error.message || 'Erro ao ajustar estoque.' })
+  }
+})
+
+app.get('/api/admin/inventory', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await listInventoryMovements())
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Erro ao listar movimentações.' })
+  }
+})
+
+app.get('/api/admin/expenses', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await listExpenses())
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ error: 'Erro ao listar despesas.' })
+  }
+})
+
+app.post('/api/admin/expenses', requireAdmin, async (req, res) => {
+  try {
+    const expense = await createExpense(req.body || {})
+    res.status(201).json(expense)
+  } catch (error) {
+    console.error(error)
+    res.status(400).json({ error: error.message || 'Erro ao criar despesa.' })
   }
 })
 
