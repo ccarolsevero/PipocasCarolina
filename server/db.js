@@ -25,6 +25,7 @@ function mapProduct(row) {
     minQuantity: Number(row.min_quantity) || 1,
     options: Array.isArray(row.options) ? row.options : [],
     active: Boolean(row.active),
+    featured: Boolean(row.featured),
     stockQty: Number(row.stock_qty) || 0,
     minStock: Number(row.min_stock) || 0,
     createdAt: row.created_at,
@@ -146,6 +147,7 @@ export async function createProduct(payload) {
       min_quantity: Number(payload.minQuantity) || 1,
       options: payload.options || [],
       active: payload.active !== false,
+      featured: payload.featured === true,
       stock_qty: Number(payload.stockQty) || 0,
       min_stock: Number(payload.minStock) || 5,
     })
@@ -180,6 +182,7 @@ export async function updateProduct(id, payload) {
       min_quantity: Number(payload.minQuantity) || 1,
       options: payload.options || [],
       active: payload.active !== false,
+      featured: payload.featured === true,
       min_stock: Number(payload.minStock) || 0,
     })
     .eq('id', Number(id))

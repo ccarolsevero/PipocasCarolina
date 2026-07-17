@@ -55,6 +55,7 @@ type Product = {
   tag?: string
   minQuantity?: number
   options?: OptionGroup[]
+  featured?: boolean
 }
 
 type CartItem = Product & {
@@ -86,6 +87,7 @@ const fallbackProducts: Product[] = [
     category: 'Tamanhos',
     unit: 'unidade',
     tag: 'Mais pedida',
+    featured: true,
     image: 'https://images.unsplash.com/photo-1585647347483-22b66260dfff?auto=format&fit=crop&w=700&q=85',
     options: [
       {
@@ -109,6 +111,7 @@ const fallbackProducts: Product[] = [
     category: 'Copos',
     unit: 'unidade',
     tag: 'Queridinho',
+    featured: true,
     image: 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=700&q=85',
     options: [
       {
@@ -132,6 +135,7 @@ const fallbackProducts: Product[] = [
     category: 'Kits',
     unit: 'kit',
     tag: 'Degustação',
+    featured: true,
     image: 'https://images.unsplash.com/photo-1582169296194-e4d644c48063?auto=format&fit=crop&w=700&q=85',
     options: [
       { id: 'flavors', label: 'Escolha 5 sabores', type: 'multi', min: 5, max: 5, choices: flavorChoices },
@@ -157,6 +161,7 @@ const fallbackProducts: Product[] = [
     category: 'Petisqueiras',
     unit: 'unidade',
     tag: 'Família',
+    featured: true,
     image: 'https://images.unsplash.com/photo-1582293041079-7814c2f12063?auto=format&fit=crop&w=700&q=85',
     options: [
       {
@@ -690,7 +695,7 @@ function Home({ products, addToCart }: { products: Product[]; addToCart: (produc
       <section className="featured">
         <div className="container">
           <div className="section-heading"><div><span className="eyebrow">As favoritas da Carolina</span><h2>Sabores que conquistam</h2></div><a href="#cardapio">Ver cardápio completo <ArrowRight size={18} /></a></div>
-          <div className="product-grid">{products.filter((p) => [1, 2, 3, 5].includes(p.id)).map((product) => <ProductCard key={product.id} product={product} onAdd={addToCart} />)}</div>
+          <div className="product-grid">{products.filter((product) => product.featured).map((product) => <ProductCard key={product.id} product={product} onAdd={addToCart} />)}</div>
         </div>
       </section>
 
@@ -1202,6 +1207,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
         minStock: Number(data.get('minStock')) || 0,
         stockQty: editingProduct ? editingProduct.stockQty : Number(data.get('stockQty')) || 0,
         active: data.get('active') === 'on',
+        featured: data.get('featured') === 'on',
         options: productOptions
           .map((group) => ({
             ...group,
@@ -1435,6 +1441,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
                   )}
                   <label className="wide">Descrição<textarea name="description" defaultValue={editingProduct?.description} /></label>
                   <label className="admin-check"><input name="active" type="checkbox" defaultChecked={editingProduct?.active ?? true} /> Produto ativo</label>
+                  <label className="admin-check home-feature-check"><input name="featured" type="checkbox" defaultChecked={editingProduct?.featured ?? false} /> Exibir na home</label>
                 </div>
                 <div className="product-options-editor">
                   <div className="product-options-head">
@@ -1556,7 +1563,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
                   <img src={product.image} alt="" />
                   <div className="admin-product-info">
                     <strong>{product.name}</strong>
-                    <span>{product.category} · {money(product.price)} · {product.active ? 'Ativo' : 'Inativo'}</span>
+                    <span>{product.category} · {money(product.price)} · {product.active ? 'Ativo' : 'Inativo'}{product.featured ? ' · Home' : ''}</span>
                     <b>Estoque: {product.stockQty} {product.unit}{product.stockQty <= product.minStock ? ' · Estoque baixo' : ''}</b>
                   </div>
                   <button className="ghost-button" onClick={() => openProductEditor(product)}>Editar</button>

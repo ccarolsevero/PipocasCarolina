@@ -213,7 +213,14 @@ if ((count || 0) > 0) {
   process.exit(0)
 }
 
-const { data, error } = await supabase.from('products').insert(products).select('id, name, stock_qty')
+const featuredProducts = new Set(['Pipoca Gourmet', 'Copo Gourmet', 'Kit Degustação', 'Petisqueira'])
+const { data, error } = await supabase
+  .from('products')
+  .insert(products.map((product) => ({
+    ...product,
+    featured: featuredProducts.has(product.name),
+  })))
+  .select('id, name, stock_qty')
 if (error) {
   console.error(error)
   process.exit(1)

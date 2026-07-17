@@ -55,6 +55,7 @@ export type CatalogProduct = {
     priceMode?: 'replace'
   }>
   active: boolean
+  featured: boolean
   stockQty: number
   minStock: number
   createdAt: string

@@ -21,11 +21,15 @@ create table if not exists products (
   min_quantity int not null default 1 check (min_quantity >= 1),
   options jsonb not null default '[]'::jsonb,
   active boolean not null default true,
+  featured boolean not null default false,
   stock_qty int not null default 0,
   min_stock int not null default 5 check (min_stock >= 0),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table products
+  add column if not exists featured boolean not null default false;
 
 create table if not exists orders (
   id bigserial primary key,
