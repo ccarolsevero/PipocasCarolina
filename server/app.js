@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express from 'express'
+import multer from 'multer'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -28,11 +29,23 @@ import {
   updateProduct,
   upsertCustomer,
 } from './db.js'
+import { isAllowedProductImage, uploadProductImage } from './storage.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const isProd = process.env.NODE_ENV === 'production'
 const isVercel = Boolean(process.env.VERCEL)
 const SHIPPING = 8
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_req, file, callback) => {
+    if (!isAllowedProductImage(file.mimetype)) {
+      callback(new Error('Selecione uma imagem JPG, PNG, WEBP ou GIF.'))
+      return
+    }
+    callback(null, true)
+  },
+})
 
 const app = express()
 
@@ -249,6 +262,16 @@ app.get('/api/admin/products', requireAdmin, async (_req, res) => {
   }
 })
 
+app.post('/api/admin/uploads/product-image', requireAdmin, imageUpload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Selecione uma imagem.' })
+    res.status(201).json(await uploadProductImage(req.file))
+  } catch (error) {
+    console.error(error)
+    res.status(400).json({ error: error.message || 'Erro ao enviar imagem.' })
+  }
+})
+
 app.post('/api/admin/products', requireAdmin, async (req, res) => {
   try {
     const product = await createProduct(req.body || {})
@@ -317,6 +340,11 @@ if (isProd && !isVercel) {
 
 app.use((err, _req, res, _next) => {
   console.error(err)
+  if (err instanceof multer.MulterError || err?.message?.includes('imagem')) {
+    return res.status(400).json({
+      error: err.code === 'LIMIT_FILE_SIZE' ? 'A imagem deve ter no máximo 5 MB.' : err.message,
+    })
+  }
   res.status(500).json({ error: 'Erro interno do servidor.' })
 })
 

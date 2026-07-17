@@ -22,6 +22,7 @@ import {
   fetchProducts,
   registerCustomer,
   saveAdminProduct,
+  uploadAdminProductImage,
   updateAdminOrderStatus,
   updateAdminPaymentStatus,
 } from './api'
@@ -1047,6 +1048,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [editingProduct, setEditingProduct] = useState<CatalogProduct | null>(null)
   const [productFormOpen, setProductFormOpen] = useState(false)
+  const [productImagePreview, setProductImagePreview] = useState('')
 
   async function loadDashboard() {
     const [nextOrders, nextSummary, nextProducts, nextCustomers, nextMovements, nextExpenses] = await Promise.all([
@@ -1180,6 +1182,12 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
     const data = new FormData(event.currentTarget)
     setLoading(true)
     try {
+      const imageFile = data.get('imageFile')
+      let image = editingProduct?.image || ''
+      if (imageFile instanceof File && imageFile.size > 0) {
+        image = (await uploadAdminProductImage(imageFile)).url
+      }
+
       await saveAdminProduct({
         ...(editingProduct || {}),
         name: String(data.get('name')),
@@ -1187,7 +1195,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
         price: Number(data.get('price')),
         category: String(data.get('category') || 'Geral'),
         unit: String(data.get('unit') || 'unidade'),
-        image: String(data.get('image') || ''),
+        image,
         tag: String(data.get('tag') || ''),
         minQuantity: Number(data.get('minQuantity')) || 1,
         minStock: Number(data.get('minStock')) || 0,
@@ -1197,6 +1205,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
       })
       setProductFormOpen(false)
       setEditingProduct(null)
+      setProductImagePreview('')
       await loadDashboard()
       onToast('Produto salvo com sucesso')
     } catch (error) {
@@ -1322,7 +1331,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
           <div className="admin-module">
             <div className="admin-module-head">
               <div><h2>Produtos e estoque</h2><p>Cadastre produtos e registre entradas, perdas ou ajustes.</p></div>
-              <button className="primary-button" onClick={() => { setEditingProduct(null); setProductFormOpen(true) }}>Novo produto</button>
+              <button className="primary-button" onClick={() => { setEditingProduct(null); setProductImagePreview(''); setProductFormOpen(true) }}>Novo produto</button>
             </div>
 
             {productFormOpen && (
@@ -1336,12 +1345,30 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
                   {!editingProduct && <label>Estoque inicial<input name="stockQty" type="number" min="0" defaultValue="0" /></label>}
                   <label>Quantidade mínima<input name="minQuantity" type="number" min="1" defaultValue={editingProduct?.minQuantity ?? 1} /></label>
                   <label>Etiqueta<input name="tag" defaultValue={editingProduct?.tag} /></label>
-                  <label className="wide">Imagem (URL)<input name="image" defaultValue={editingProduct?.image} /></label>
+                  <label className="wide admin-image-field">
+                    Imagem do produto
+                    <input
+                      name="imageFile"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0]
+                        setProductImagePreview(file ? URL.createObjectURL(file) : editingProduct?.image || '')
+                      }}
+                    />
+                    <small>JPG, PNG, WEBP ou GIF · máximo de 5 MB</small>
+                  </label>
+                  {(productImagePreview || editingProduct?.image) && (
+                    <div className="admin-image-preview">
+                      <img src={productImagePreview || editingProduct?.image} alt="Pré-visualização do produto" />
+                      <span>Pré-visualização</span>
+                    </div>
+                  )}
                   <label className="wide">Descrição<textarea name="description" defaultValue={editingProduct?.description} /></label>
                   <label className="admin-check"><input name="active" type="checkbox" defaultChecked={editingProduct?.active ?? true} /> Produto ativo</label>
                 </div>
                 <div className="admin-form-actions">
-                  <button type="button" className="ghost-button" onClick={() => setProductFormOpen(false)}>Cancelar</button>
+                  <button type="button" className="ghost-button" onClick={() => { setProductFormOpen(false); setProductImagePreview('') }}>Cancelar</button>
                   <button className="primary-button" disabled={loading}>{loading ? 'Salvando...' : 'Salvar produto'}</button>
                 </div>
               </form>
@@ -1356,7 +1383,7 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
                     <span>{product.category} · {money(product.price)} · {product.active ? 'Ativo' : 'Inativo'}</span>
                     <b>Estoque: {product.stockQty} {product.unit}{product.stockQty <= product.minStock ? ' · Estoque baixo' : ''}</b>
                   </div>
-                  <button className="ghost-button" onClick={() => { setEditingProduct(product); setProductFormOpen(true) }}>Editar</button>
+                  <button className="ghost-button" onClick={() => { setEditingProduct(product); setProductImagePreview(product.image); setProductFormOpen(true) }}>Editar</button>
                   <form className="stock-form" onSubmit={(event) => handleStock(event, product)}>
                     <select name="type" aria-label="Tipo de movimentação">
                       <option value="entrada">Entrada</option>

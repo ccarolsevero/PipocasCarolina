@@ -202,6 +202,22 @@ export function saveAdminProduct(product: Partial<CatalogProduct> & Pick<Catalog
   })
 }
 
+export async function uploadAdminProductImage(file: File) {
+  const form = new FormData()
+  form.append('image', file)
+
+  const response = await fetch('/api/admin/uploads/product-image', {
+    method: 'POST',
+    credentials: 'include',
+    body: form,
+  })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(data.error || 'Não foi possível enviar a imagem.')
+  }
+  return data as { url: string; path: string }
+}
+
 export function adjustAdminStock(payload: {
   productId: number
   quantity: number

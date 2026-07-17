@@ -452,6 +452,12 @@ footer .logo img { height: 52px; max-width: 190px; content: url('/logo-pipocas-c
 .admin-form-grid label { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; }
 .admin-form-grid label.wide { grid-column: span 2; }
 .admin-form-grid input, .admin-form-grid textarea, .expense-form input, .stock-form input, .stock-form select { border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 10px 12px; font-size: 12px; outline: 0; }
+.admin-image-field input[type="file"] { cursor: pointer; }
+.admin-image-field input[type="file"]::file-selector-button { border: 0; border-radius: 8px; background: var(--pink); color: #fff; padding: 8px 12px; margin-right: 10px; font-weight: 700; cursor: pointer; }
+.admin-image-field small { color: var(--muted); font-weight: 400; }
+.admin-image-preview { display: flex; align-items: center; gap: 12px; align-self: end; }
+.admin-image-preview img { width: 82px; height: 82px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+.admin-image-preview span { color: var(--muted); font-size: 11px; }
 .admin-form-grid textarea { min-height: 70px; resize: vertical; }
 .admin-form-grid .admin-check { flex-direction: row; align-items: center; justify-content: flex-start; }
 .admin-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
