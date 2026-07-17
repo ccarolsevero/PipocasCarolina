@@ -163,10 +163,10 @@ app.get('/api/orders', async (req, res) => {
   }
 })
 
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', async (req, res) => {
   try {
     const { email, password } = req.body || {}
-    const result = loginAdmin(email, password)
+    const result = await loginAdmin(email, password)
 
     if (!result.ok) {
       return res.status(result.error.includes('configurado') ? 503 : 401).json({ error: result.error })

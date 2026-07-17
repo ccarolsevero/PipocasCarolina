@@ -1,13 +1,17 @@
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { getSupabaseAdmin, hasSupabase } from './supabase.js'
 
 const COOKIE_NAME = 'pc_admin_session'
 const SESSION_TTL_MS = 12 * 60 * 60 * 1000
 
-function getAdminConfig() {
-  const email = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase()
-  const password = String(process.env.ADMIN_PASSWORD || '')
-  const secret = String(process.env.ADMIN_SESSION_SECRET || '')
-  return { email, password, secret, configured: Boolean(email && password && secret) }
+function getSessionSecret() {
+  return (
+    process.env.ADMIN_SESSION_SECRET ||
+    process.env.SUPABASE_JWT_SECRET ||
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    ''
+  )
 }
 
 function safeEqual(a, b) {
@@ -76,35 +80,109 @@ function buildCookie(value, { clear = false, secure = false } = {}) {
   return parts.join('; ')
 }
 
-export function loginAdmin(email, password) {
-  const config = getAdminConfig()
-  if (!config.configured) {
-    return { ok: false, error: 'Painel administrativo ainda não configurado.' }
-  }
+export function hashPassword(password) {
+  const salt = randomBytes(16).toString('hex')
+  const hash = scryptSync(String(password), salt, 64).toString('hex')
+  return `scrypt$${salt}$${hash}`
+}
+
+export function verifyPassword(password, stored) {
+  const [algo, salt, hash] = String(stored || '').split('$')
+  if (algo !== 'scrypt' || !salt || !hash) return false
+  const next = scryptSync(String(password), salt, 64).toString('hex')
+  return safeEqual(next, hash)
+}
+
+async function findAdminByEmail(email) {
+  if (!hasSupabase()) return null
+  const supabase = getSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('admins')
+    .select('*')
+    .eq('email', email.trim().toLowerCase())
+    .eq('active', true)
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  return data
+}
+
+function envAdminLogin(email, password) {
+  const envEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase()
+  const envPassword = String(process.env.ADMIN_PASSWORD || '')
+  const secret = getSessionSecret()
+
+  if (!envEmail || !envPassword || !secret) return null
 
   const normalizedEmail = String(email || '').trim().toLowerCase()
-  const validEmail = safeEqual(normalizedEmail, config.email)
-  const validPassword = safeEqual(String(password || ''), config.password)
-
+  const validEmail = safeEqual(normalizedEmail, envEmail)
+  const validPassword = safeEqual(String(password || ''), envPassword)
   if (!validEmail || !validPassword) {
     return { ok: false, error: 'E-mail ou senha inválidos.' }
   }
 
   return {
     ok: true,
-    token: createSessionToken(config.email, config.secret),
-    email: config.email,
+    token: createSessionToken(envEmail, secret),
+    email: envEmail,
   }
 }
 
+export async function loginAdmin(email, password) {
+  const secret = getSessionSecret()
+  if (!secret) {
+    return { ok: false, error: 'Painel administrativo ainda não configurado.' }
+  }
+
+  const normalizedEmail = String(email || '').trim().toLowerCase()
+  const envResult = envAdminLogin(email, password)
+  if (envResult?.ok) return envResult
+
+  try {
+    const admin = await findAdminByEmail(normalizedEmail)
+    if (admin && verifyPassword(password, admin.password_hash)) {
+      return {
+        ok: true,
+        token: createSessionToken(admin.email, secret),
+        email: admin.email,
+      }
+    }
+  } catch (error) {
+    console.error(error)
+  }
+
+  if (envResult && !envResult.ok) return envResult
+  return { ok: false, error: 'E-mail ou senha inválidos.' }
+}
+
+export async function upsertAdminUser({ email, password, name = 'Administrador' }) {
+  const supabase = getSupabaseAdmin()
+  const normalizedEmail = String(email).trim().toLowerCase()
+  const passwordHash = hashPassword(password)
+
+  const { data, error } = await supabase
+    .from('admins')
+    .upsert(
+      {
+        email: normalizedEmail,
+        name: String(name).trim() || 'Administrador',
+        password_hash: passwordHash,
+        active: true,
+      },
+      { onConflict: 'email' },
+    )
+    .select('id, email, name, active, created_at')
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
 export function readAdminSession(req) {
-  const config = getAdminConfig()
-  if (!config.configured) return null
+  const secret = getSessionSecret()
+  if (!secret) return null
 
   const cookies = parseCookies(req.headers.cookie)
-  const session = verifySessionToken(cookies[COOKIE_NAME], config.secret)
-  if (!session || session.email !== config.email) return null
-  return session
+  return verifySessionToken(cookies[COOKIE_NAME], secret)
 }
 
 export function setAdminSessionCookie(res, token, isProd) {
@@ -122,4 +200,10 @@ export function requireAdmin(req, res, next) {
   }
   req.admin = session
   next()
+}
+
+export function fingerprintSecret() {
+  const secret = getSessionSecret()
+  if (!secret) return null
+  return createHash('sha256').update(secret).digest('hex').slice(0, 12)
 }

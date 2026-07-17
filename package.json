@@ -14,7 +14,8 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "db:schema": "node scripts/apply-schema.mjs",
-    "db:seed": "node scripts/seed-products.mjs"
+    "db:seed": "node scripts/seed-products.mjs",
+    "db:admin": "node scripts/seed-admin.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.7",
