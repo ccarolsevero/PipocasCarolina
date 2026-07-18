@@ -6,8 +6,12 @@ create table if not exists customers (
   name text not null,
   email text not null unique,
   phone text not null,
+  birth_date date,
   created_at timestamptz not null default now()
 );
+
+alter table customers
+  add column if not exists birth_date date;
 
 create table if not exists products (
   id bigserial primary key,

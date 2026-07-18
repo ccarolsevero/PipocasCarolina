@@ -76,17 +76,28 @@ app.get('/api/products', async (_req, res) => {
 
 app.post('/api/customers', async (req, res) => {
   try {
-    const { name, email, phone } = req.body || {}
+    const { name, email, phone, birthDate } = req.body || {}
 
-    if (!name?.trim() || !email?.trim() || !phone?.trim()) {
-      return res.status(400).json({ error: 'Nome, e-mail e telefone são obrigatórios.' })
+    if (!name?.trim() || !email?.trim() || !phone?.trim() || !birthDate) {
+      return res.status(400).json({ error: 'Nome, e-mail, telefone e data de nascimento são obrigatórios.' })
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       return res.status(400).json({ error: 'Informe um e-mail válido.' })
     }
 
-    const customer = await upsertCustomer({ name, email, phone })
+    const birth = String(birthDate).slice(0, 10)
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
+      return res.status(400).json({ error: 'Informe uma data de nascimento válida.' })
+    }
+
+    const birthParsed = new Date(`${birth}T12:00:00`)
+    const today = new Date()
+    if (Number.isNaN(birthParsed.getTime()) || birthParsed > today) {
+      return res.status(400).json({ error: 'Informe uma data de nascimento válida.' })
+    }
+
+    const customer = await upsertCustomer({ name, email, phone, birthDate: birth })
     res.status(201).json(customer)
   } catch (error) {
     console.error(error)
@@ -129,7 +140,12 @@ app.post('/api/orders', async (req, res) => {
     }
 
     const allowedPayments = ['Pix', 'Cartão na entrega', 'Dinheiro']
-    const selectedPayment = allowedPayments.includes(payment) ? payment : 'Pix'
+    const rawPayment = String(payment || 'Pix').trim()
+    const selectedPayment = allowedPayments.some(
+      (item) => rawPayment === item || rawPayment.startsWith(`${item} ·`),
+    )
+      ? rawPayment
+      : 'Pix'
     const shipping = SHIPPING
     const safeSubtotal = Number(subtotal) || 0
 

@@ -7,6 +7,7 @@ function mapCustomer(row) {
     name: row.name,
     email: row.email,
     phone: row.phone,
+    birthDate: row.birth_date || null,
     createdAt: row.created_at,
   }
 }
@@ -66,15 +67,20 @@ function requireSupabase() {
   return getSupabaseAdmin()
 }
 
-export async function upsertCustomer({ name, email, phone }) {
+export async function upsertCustomer({ name, email, phone, birthDate }) {
   const supabase = requireSupabase()
   const normalized = email.trim().toLowerCase()
   const existing = await findCustomerByEmail(normalized)
+  const payload = {
+    name: name.trim(),
+    phone: phone.trim(),
+    birth_date: birthDate || null,
+  }
 
   if (existing) {
     const { data, error } = await supabase
       .from('customers')
-      .update({ name: name.trim(), phone: phone.trim() })
+      .update(payload)
       .eq('id', existing.id)
       .select('*')
       .single()
@@ -84,7 +90,7 @@ export async function upsertCustomer({ name, email, phone }) {
 
   const { data, error } = await supabase
     .from('customers')
-    .insert({ name: name.trim(), email: normalized, phone: phone.trim() })
+    .insert({ ...payload, email: normalized })
     .select('*')
     .single()
   if (error) throw new Error(error.message)

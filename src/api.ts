@@ -3,6 +3,7 @@ export type Customer = {
   name: string
   email: string
   phone: string
+  birthDate?: string | null
   createdAt: string
 }
 
@@ -126,7 +127,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data as T
 }
 
-export function registerCustomer(payload: { name: string; email: string; phone: string }) {
+export function registerCustomer(payload: { name: string; email: string; phone: string; birthDate: string }) {
   return request<Customer>('/api/customers', {
     method: 'POST',
     body: JSON.stringify(payload),

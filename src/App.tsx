@@ -284,6 +284,13 @@ function flavorLimits(product: Product, selected: Record<string, string[]>) {
 
 const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
+function formatBirthDate(value?: string | null) {
+  if (!value) return '—'
+  const [year, month, day] = value.slice(0, 10).split('-').map(Number)
+  if (!year || !month || !day) return value
+  return new Date(year, month - 1, day).toLocaleDateString('pt-BR')
+}
+
 const statusLabel: Record<Order['status'], string> = {
   confirmado: 'Confirmado',
   preparando: 'Em preparo',
@@ -444,6 +451,7 @@ function App() {
         name: String(data.get('name')),
         email: String(data.get('email')),
         phone: String(data.get('phone')),
+        birthDate: String(data.get('birthDate')),
       })
       setUser(nextUser)
       localStorage.setItem('pc-user', JSON.stringify(nextUser))
@@ -465,6 +473,22 @@ function App() {
     setLoading(true)
 
     try {
+      const method = String(data.get('payment') || 'Pix')
+      let payment = method
+      if (method === 'Dinheiro') {
+        const changeFor = String(data.get('changeFor') || '').trim()
+        if (!changeFor) {
+          payment = 'Dinheiro · sem troco'
+        } else {
+          const value = Number(changeFor.replace(',', '.'))
+          if (!Number.isFinite(value) || value < subtotal + SHIPPING) {
+            setToast(`Para dinheiro, informe um valor de troco a partir de ${money(subtotal + SHIPPING)}`)
+            return
+          }
+          payment = `Dinheiro · troco para ${money(value)}`
+        }
+      }
+
       const order = await createOrder({
         customerId: user.id,
         items: cart.map((item) => ({
@@ -480,7 +504,7 @@ function App() {
           street: String(data.get('street')),
           complement: String(data.get('complement') || ''),
         },
-        payment: String(data.get('payment') || 'Pix'),
+        payment,
         subtotal,
       })
 
@@ -619,6 +643,13 @@ function Festas() {
             <li>60g · R$ 9,00</li>
             <li>Pedido mínimo: 20 unidades</li>
           </ul>
+          <aside className="festas-notice">
+            <span className="festas-notice-icon"><Clock3 size={18} /></span>
+            <div>
+              <strong>Atenção ao prazo</strong>
+              <p>As lembrancinhas precisam ser encomendadas com no mínimo 10 dias de antecedência. A personalização das embalagens é combinada previamente pelo WhatsApp.</p>
+            </div>
+          </aside>
           <a className="primary-button" href={whatsLembrancinhas} target="_blank" rel="noreferrer">
             Orçamento de lembrancinhas <MessageCircle size={18} />
           </a>
@@ -956,13 +987,14 @@ function AuthModal({ user, loading, onClose, onSubmit, onLogout }: { user: Custo
       <div className="modal auth-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-head"><div><span className="eyebrow">Minha conta</span><h2>{user ? `Olá, ${user.name.split(' ')[0]}!` : 'Entre para pedir'}</h2></div><button onClick={onClose}><X /></button></div>
         {user ? (
-          <div className="profile"><span><UserRound size={34} /></span><h3>{user.name}</h3><p>{user.email}</p><p>{user.phone}</p><a className="primary-button full" href="#pedidos" onClick={onClose}>Ver meus pedidos</a><button className="logout" onClick={onLogout}>Sair da conta</button></div>
+          <div className="profile"><span><UserRound size={34} /></span><h3>{user.name}</h3><p>{user.email}</p><p>{user.phone}</p>{user.birthDate && <p>Nascimento: {formatBirthDate(user.birthDate)}</p>}<a className="primary-button full" href="#pedidos" onClick={onClose}>Ver meus pedidos</a><button className="logout" onClick={onLogout}>Sair da conta</button></div>
         ) : (
           <form onSubmit={onSubmit} className="form">
             <p>Faça seu cadastro rapidinho para acompanhar e receber seus pedidos.</p>
             <label>Nome completo<input name="name" required placeholder="Como podemos te chamar?" /></label>
             <label>E-mail<input name="email" type="email" required placeholder="voce@email.com" /></label>
             <label>Celular<input name="phone" required placeholder="(00) 00000-0000" /></label>
+            <label>Data de nascimento<input name="birthDate" type="date" required max={new Date().toISOString().slice(0, 10)} /></label>
             <button className="primary-button full" disabled={loading}>{loading ? 'Salvando...' : 'Criar minha conta'} <ArrowRight size={18} /></button>
             <small>Seus dados ficam salvos no servidor da loja.</small>
           </form>
@@ -972,7 +1004,49 @@ function AuthModal({ user, loading, onClose, onSubmit, onLogout }: { user: Custo
   )
 }
 
+function formatCep(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  if (digits.length <= 5) return digits
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`
+}
+
 function CheckoutModal({ user, subtotal, loading, onClose, onSubmit }: { user: Customer; subtotal: number; loading: boolean; onClose: () => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  const [payment, setPayment] = useState('Pix')
+  const [cep, setCep] = useState('')
+  const [street, setStreet] = useState('')
+  const [cepStatus, setCepStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
+  const total = subtotal + SHIPPING
+
+  useEffect(() => {
+    const digits = cep.replace(/\D/g, '')
+    if (digits.length !== 8) {
+      setCepStatus('idle')
+      return
+    }
+
+    const controller = new AbortController()
+    setCepStatus('loading')
+
+    fetch(`https://viacep.com.br/ws/${digits}/json/`, { signal: controller.signal })
+      .then((response) => response.json())
+      .then((data: { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string }) => {
+        if (data.erro) {
+          setCepStatus('error')
+          return
+        }
+        const city = [data.localidade, data.uf].filter(Boolean).join('/')
+        const parts = [data.logradouro, data.bairro, city].filter(Boolean)
+        setStreet(parts.join(', '))
+        setCepStatus('ok')
+      })
+      .catch((error: { name?: string }) => {
+        if (error?.name === 'AbortError') return
+        setCepStatus('error')
+      })
+
+    return () => controller.abort()
+  }, [cep])
+
   return (
     <div className="overlay centered" onMouseDown={onClose}>
       <div className="modal checkout-modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -980,16 +1054,56 @@ function CheckoutModal({ user, subtotal, loading, onClose, onSubmit }: { user: C
         <form className="form" onSubmit={onSubmit}>
           <div className="checkout-user"><UserRound size={20} /><span><b>{user.name}</b><small>{user.phone}</small></span></div>
           <h4>Endereço de entrega</h4>
-          <div className="form-row"><label>CEP<input name="cep" required placeholder="00000-000" /></label><label>Número<input name="number" required placeholder="123" /></label></div>
-          <label>Rua e bairro<input name="street" required placeholder="Rua das Flores, Centro" /></label>
+          <div className="form-row">
+            <label>
+              CEP
+              <input
+                name="cep"
+                required
+                inputMode="numeric"
+                autoComplete="postal-code"
+                placeholder="00000-000"
+                value={cep}
+                onChange={(event) => setCep(formatCep(event.target.value))}
+              />
+              {cepStatus === 'loading' && <small className="field-hint">Buscando endereço...</small>}
+              {cepStatus === 'ok' && <small className="field-hint ok">Endereço preenchido. Confira e informe o número.</small>}
+              {cepStatus === 'error' && <small className="field-hint error">CEP não encontrado. Preencha o endereço manualmente.</small>}
+            </label>
+            <label>Número<input name="number" required placeholder="123" autoComplete="address-line2" /></label>
+          </div>
+          <label>
+            Rua e bairro
+            <input
+              name="street"
+              required
+              placeholder="Rua das Flores, Centro"
+              autoComplete="street-address"
+              value={street}
+              onChange={(event) => setStreet(event.target.value)}
+            />
+          </label>
           <label>Complemento<input name="complement" placeholder="Apto, bloco ou referência (opcional)" /></label>
           <h4>Forma de pagamento</h4>
           <div className="payment-options">
-            <label><input type="radio" name="payment" value="Pix" defaultChecked /> Pix</label>
-            <label><input type="radio" name="payment" value="Cartão na entrega" /> Cartão na entrega</label>
-            <label><input type="radio" name="payment" value="Dinheiro" /> Dinheiro</label>
+            <label><input type="radio" name="payment" value="Pix" checked={payment === 'Pix'} onChange={() => setPayment('Pix')} /> Pix</label>
+            <label><input type="radio" name="payment" value="Cartão na entrega" checked={payment === 'Cartão na entrega'} onChange={() => setPayment('Cartão na entrega')} /> Cartão na entrega</label>
+            <label><input type="radio" name="payment" value="Dinheiro" checked={payment === 'Dinheiro'} onChange={() => setPayment('Dinheiro')} /> Dinheiro</label>
           </div>
-          <div className="checkout-total"><span>Total com frete</span><b>{money(subtotal + SHIPPING)}</b></div>
+          {payment === 'Dinheiro' && (
+            <label className="change-for">
+              Troco para quanto?
+              <input
+                name="changeFor"
+                type="number"
+                min={total}
+                step="0.01"
+                placeholder={`Ex.: ${Math.ceil(total / 10) * 10 || 50}`}
+              />
+              <small>Deixe em branco se não precisar de troco. Total do pedido: {money(total)}</small>
+            </label>
+          )}
+          <div className="checkout-total"><span>Total com frete</span><b>{money(total)}</b></div>
           <button className="primary-button full" disabled={loading}>{loading ? 'Enviando...' : 'Confirmar pedido'} <PackageCheck size={18} /></button>
         </form>
       </div>
@@ -1611,10 +1725,11 @@ function AdminPage({ onToast }: { onToast: (message: string) => void }) {
             <div className="admin-module-head"><div><h2>Clientes</h2><p>{customers.length} clientes cadastrados no banco.</p></div></div>
             <div className="admin-table-wrap">
               <table className="admin-table">
-                <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Cadastro</th></tr></thead>
+                <thead><tr><th>Nome</th><th>E-mail</th><th>Telefone</th><th>Nascimento</th><th>Cadastro</th></tr></thead>
                 <tbody>{customers.map((customer) => (
                   <tr key={customer.id}>
                     <td><b>{customer.name}</b></td><td>{customer.email}</td><td>{customer.phone}</td>
+                    <td>{formatBirthDate(customer.birthDate)}</td>
                     <td>{new Date(customer.createdAt).toLocaleDateString('pt-BR')}</td>
                   </tr>
                 ))}</tbody>

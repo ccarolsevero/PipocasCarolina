@@ -250,6 +250,39 @@ footer .logo img { height: 52px; max-width: 190px; content: url('/logo-pipocas-c
   font-size: 12px;
   font-weight: 700;
 }
+.festas-notice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: start;
+  margin: 0 0 24px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(139,38,61,.18);
+  background: linear-gradient(135deg, #f2e8e3 0%, var(--surface) 100%);
+}
+.festas-notice-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--pink);
+  color: #fff;
+  flex-shrink: 0;
+}
+.festas-notice strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--brown);
+  font-size: 13px;
+}
+.festas-notice p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
 .festas-side {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -606,6 +639,11 @@ footer .logo img { height: 52px; max-width: 190px; content: url('/logo-pipocas-c
 .form-row { display: grid; grid-template-columns: 1.4fr .6fr; gap: 10px; }
 .payment-options { display: flex; gap: 7px; }
 .payment-options label { flex: 1; display: flex; flex-direction: row; justify-content: center; align-items: center; padding: 10px 5px; border: 1px solid var(--line); border-radius: 9px; font-size: 9px; }
+.change-for { margin-top: 12px; }
+.change-for small,
+.field-hint { display: block; margin-top: 6px; color: var(--muted); font-size: 11px; font-weight: 400; line-height: 1.5; }
+.field-hint.ok { color: #2f6b3a; }
+.field-hint.error { color: #9b2c2c; }
 .checkout-total { display: flex; justify-content: space-between; background: #efe2df; padding: 14px; border-radius: 10px; margin: 18px 0; font-size: 12px; }
 .checkout-total b { color: var(--pink); font-size: 17px; }
 .toast { position: fixed; z-index: 200; left: 50%; bottom: 25px; transform: translateX(-50%); background: var(--pink-dark); color: white; padding: 12px 18px; border-radius: 99px; box-shadow: 0 12px 35px rgba(86,24,41,.25); display: flex; align-items: center; gap: 9px; font-size: 12px; animation: toastin .3s; white-space: nowrap; }
