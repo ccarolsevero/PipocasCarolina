@@ -137,9 +137,25 @@ nav a.active::after { right: 0; }
 .story-copy h2 { font-size: 46px; margin: 14px 0 24px; }
 .story-copy > p { color: #f4e2dc; font-size: 15px; line-height: 1.85; }
 .story-people { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; margin-top: 75px; }
-.person-card { padding: 30px; background: var(--surface); color: var(--brown); border: 2px solid rgba(255,250,242,.75); border-radius: 20px; box-shadow: 0 18px 45px rgba(80,20,36,.2); transition: transform .25s; display: grid; grid-template-columns: 128px 1fr; gap: 18px; align-items: start; }
+.person-card {
+  padding: 30px;
+  background: var(--surface);
+  color: var(--brown);
+  border: 2px solid rgba(255,250,242,.75);
+  border-radius: 20px;
+  box-shadow: 0 18px 45px rgba(80,20,36,.2);
+  transition: transform .25s;
+  display: grid;
+  grid-template-columns: 128px 1fr;
+  grid-template-areas:
+    'photo meta'
+    'photo bio';
+  gap: 8px 18px;
+  align-items: start;
+}
 .person-card:hover { transform: translateY(-5px); }
 .person-photo {
+  grid-area: photo;
   width: 128px;
   height: 148px;
   position: relative;
@@ -166,9 +182,12 @@ nav a.active::after { right: 0; }
   mask: url('/marca-popcorn-white.png') center / contain no-repeat;
   filter: drop-shadow(0 10px 18px rgba(86,24,41,.22));
 }
+.person-meta { grid-area: meta; }
+.person-bio { grid-area: bio; }
 .person-card small { color: var(--pink); text-transform: uppercase; letter-spacing: .14em; font-size: 9px; font-weight: 700; }
-.person-card h3 { margin: 6px 0 14px; font-family: 'DM Serif Display'; font-size: 27px; font-weight: 400; }
+.person-card h3 { margin: 6px 0 0; font-family: 'DM Serif Display'; font-size: 27px; font-weight: 400; }
 .person-card p { margin-bottom: 9px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+.person-bio p:last-child { margin-bottom: 0; }
 .cta { background: var(--surface); color: var(--pink); border-block: 1px solid var(--line); }
 .cta-inner { min-height: 250px; display: flex; align-items: center; justify-content: space-between; position: relative; }
 .cta .eyebrow { color: var(--pink); }
@@ -720,9 +739,19 @@ footer .logo img { height: 52px; max-width: 190px; content: url('/logo-pipocas-c
   .hero-visual > video { width: 310px; height: 310px; }
   .product-image { height: 185px; }
   .product-info h3 { font-size: 17px; }
-  .person-card { grid-template-columns: 1fr; padding: 24px; }
-  .person-photo { width: 118px; height: 136px; margin-bottom: 4px; }
-  .person-photo img { width: 114px; height: 132px; object-position: center 28%; }
+  .person-card {
+    grid-template-columns: 96px 1fr;
+    grid-template-areas:
+      'photo meta'
+      'bio bio';
+    padding: 20px;
+    gap: 10px 14px;
+    align-items: center;
+  }
+  .person-photo { width: 96px; height: 112px; margin-bottom: 0; }
+  .person-photo img { width: 92px; height: 108px; object-position: center 28%; }
+  .person-card h3 { font-size: 22px; line-height: 1.15; margin-top: 4px; }
+  .person-meta { align-self: center; }
   .footer-grid { grid-template-columns: 1fr; }
   .footer-grid > div { grid-column: 1 !important; }
   .modal { padding: 21px; }
@@ -784,8 +813,8 @@ footer .logo img { height: 52px; max-width: 190px; content: url('/logo-pipocas-c
   .story-main { width: 100%; height: auto; aspect-ratio: 3 / 4; border-width: 5px; border-radius: 36px; }
   .story-copy > p { font-size: 14px; }
   .story-people { margin-top: 40px; gap: 16px; }
-  .person-card { padding: 22px; }
-  .person-card h3 { font-size: 25px; }
+  .person-card { padding: 18px; }
+  .person-card h3 { font-size: 21px; }
 
   .cta-inner { min-height: 0; padding: 45px 0; text-align: center; align-items: center; }
   .cta h2 { font-size: 33px; }

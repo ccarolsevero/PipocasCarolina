@@ -755,9 +755,11 @@ function Home({ products, addToCart }: { products: Product[]; addToCart: (produc
               <div className="person-photo">
                 <img src="/andressa-carolina.jpg" alt="Andressa Carolina Neves" />
               </div>
-              <div>
+              <div className="person-meta">
                 <small>Produção & qualidade</small>
                 <h3>Andressa Carolina Neves</h3>
+              </div>
+              <div className="person-bio">
                 <p>Andressa é o coração da produção da Pipocas Carolinas. É ela quem transforma ingredientes selecionados em pipocas gourmet irresistíveis, cuidando de cada etapa: do preparo à caramelização, da finalização à embalagem.</p>
                 <p>Seu carinho e atenção garantem que cada cliente receba um produto feito com qualidade, capricho e muito amor.</p>
               </div>
@@ -766,9 +768,11 @@ function Home({ products, addToCart }: { products: Product[]; addToCart: (produc
               <div className="person-photo">
                 <img src="/paloma-carolina.jpg" alt="Paloma Carolina" />
               </div>
-              <div>
+              <div className="person-meta">
                 <small>Marketing & comunicação</small>
                 <h3>Paloma Carolina</h3>
+              </div>
+              <div className="person-bio">
                 <p>Paloma é quem dá voz à Pipocas Carolinas. Ela cuida das redes sociais, da identidade visual, do relacionamento com os clientes e de cada detalhe que faz a experiência começar antes mesmo da primeira mordida.</p>
                 <p>É através da criatividade e do olhar atento que a marca continua crescendo e conquistando novos momentos para adoçar.</p>
               </div>
