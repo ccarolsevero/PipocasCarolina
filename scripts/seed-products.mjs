@@ -96,7 +96,7 @@ const products = [
     ],
   },
   {
-    name: 'Caixa Presente',
+    name: 'Presente',
     description: 'Caixa com 2 sabores. Perfeita para presentear.',
     price: 30,
     category: 'Presentes',
@@ -175,7 +175,7 @@ const products = [
   },
   {
     name: 'Saquinho Personalizado',
-    description: 'Lembrancinha com cor, laço e adesivos. Pedido mínimo: 20 unidades.',
+    description: 'Lembrancinha com cor, laço e adesivos. No de 30g escolha até 2 sabores; nos de 50g e 60g, até 3. Se escolher mais de um, vão misturados no saquinho. Pedido mínimo: 20 unidades.',
     price: 7,
     category: 'Festas',
     unit: 'unidade',
@@ -196,7 +196,7 @@ const products = [
           { label: '60g', price: 9 },
         ],
       },
-      { id: 'flavor', label: 'Sabor', type: 'single', choices: flavorChoices },
+      { id: 'flavors', label: 'Sabores (misturados)', type: 'multi', min: 1, max: 3, choices: flavorChoices },
     ],
   },
 ]

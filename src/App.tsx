@@ -143,7 +143,7 @@ const fallbackProducts: Product[] = [
   },
   {
     id: 4,
-    name: 'Caixa Presente',
+    name: 'Presente',
     description: 'Caixa com 2 sabores. Perfeita para presentear.',
     price: 30,
     category: 'Presentes',
@@ -215,7 +215,7 @@ const fallbackProducts: Product[] = [
   {
     id: 8,
     name: 'Saquinho Personalizado',
-    description: 'Lembrancinha com cor, laço e adesivos. Pedido mínimo: 20 unidades.',
+    description: 'Lembrancinha com cor, laço e adesivos. No de 30g escolha até 2 sabores; nos de 50g e 60g, até 3. Se escolher mais de um, vão misturados no saquinho. Pedido mínimo: 20 unidades.',
     price: 7,
     category: 'Festas',
     unit: 'unidade',
@@ -234,7 +234,7 @@ const fallbackProducts: Product[] = [
           { label: '60g', price: 9 },
         ],
       },
-      { id: 'flavor', label: 'Sabor', type: 'single', choices: flavorChoices },
+      { id: 'flavors', label: 'Sabores (misturados)', type: 'multi', min: 1, max: 3, choices: flavorChoices },
     ],
   },
 ]
@@ -266,10 +266,20 @@ function makeCartKey(productId: number, selected: Record<string, string[]>) {
   return `${productId}::${JSON.stringify(selected)}`
 }
 
-function requiredFlavorCount(product: Product, selected: Record<string, string[]>) {
-  if (product.id !== 5) return null
-  const size = selected.size?.[0] || ''
-  return size.includes('Grande') ? 5 : 4
+function flavorLimits(product: Product, selected: Record<string, string[]>) {
+  if (product.id === 5) {
+    const size = selected.size?.[0] || ''
+    const count = size.includes('Grande') ? 5 : 4
+    return { min: count, max: count }
+  }
+
+  if (product.id === 8 || product.name.toLowerCase().includes('saquinho')) {
+    const size = selected.size?.[0] || ''
+    if (size.includes('50') || size.includes('60')) return { min: 1, max: 3 }
+    return { min: 1, max: 2 }
+  }
+
+  return null
 }
 
 const money = (value: number) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -545,7 +555,7 @@ function App() {
           </section>
         )}
         {page === 'pedidos' && <Orders user={user} orders={orders} onLogin={() => setAuthOpen(true)} />}
-        {page === 'festas' && <Festas products={catalog} addToCart={requestAddToCart} />}
+        {page === 'festas' && <Festas />}
         {page === 'admin' && <AdminPage onToast={setToast} />}
       </main>
 
@@ -578,9 +588,7 @@ function App() {
   )
 }
 
-function Festas({ products, addToCart }: { products: Product[]; addToCart: (product: Product) => void }) {
-  const favorProduct = products.find((product) => product.id === 8)
-  const kiloProduct = products.find((product) => product.id === 7)
+function Festas() {
   const whatsOrcamento = 'https://wa.me/5519995755409?text=Ol%C3%A1!%20Gostaria%20de%20solicitar%20um%20or%C3%A7amento%20para%20festas%20e%20eventos%20da%20Pipocas%20Carolinas.'
   const whatsLembrancinhas = 'https://wa.me/5519995755409?text=Ol%C3%A1!%20Gostaria%20de%20um%20or%C3%A7amento%20de%20lembrancinhas%20personalizadas.'
   const whatsCarrinho = 'https://wa.me/5519995755409?text=Ol%C3%A1!%20Gostaria%20de%20solicitar%20um%20or%C3%A7amento%20do%20carrinho%20para%20festas%20e%20eventos.'
@@ -596,7 +604,7 @@ function Festas({ products, addToCart }: { products: Product[]; addToCart: (prod
         </a>
       </div>
 
-      <div className="container festas-block">
+      <div className="container festas-block festas-block-lembrancinhas">
         <div className="festas-copy">
           <span className="festas-icon"><Gift size={22} /></span>
           <span className="eyebrow">Lembrancinhas</span>
@@ -615,15 +623,14 @@ function Festas({ products, addToCart }: { products: Product[]; addToCart: (prod
             Orçamento de lembrancinhas <MessageCircle size={18} />
           </a>
         </div>
-        <div className="festas-side">
-          {favorProduct && <ProductCard product={favorProduct} onAdd={addToCart} />}
-          {kiloProduct && <ProductCard product={kiloProduct} onAdd={addToCart} />}
+        <div className="festas-visual">
+          <img src="/lembrancinhas-festas.jpg" alt="Lembrancinhas personalizadas da Pipocas Carolinas" />
         </div>
       </div>
 
       <div className="container festas-block festas-block-alt">
         <div className="festas-visual">
-          <img src="/nossa-historia.webp" alt="Carrinho da Pipocas Carolinas para festas e eventos" />
+          <img src="/carrinho-festas.jpg" alt="Carrinho da Pipocas Carolinas para festas e eventos" />
         </div>
         <div className="festas-copy">
           <span className="festas-icon"><PartyPopper size={22} /></span>
@@ -703,7 +710,7 @@ function Home({ products, addToCart }: { products: Product[]; addToCart: (produc
         <div className="container">
           <div className="story-grid">
             <div className="story-images">
-              <img className="story-main" src="/nossa-historia.webp" alt="Andressa Neves e Paloma Carolina com o carrinho da Pipocas Carolinas" />
+              <img className="story-main" src="/nossa-historia.webp" alt="Andressa Carolina Neves e Paloma Carolina com o carrinho da Pipocas Carolinas" />
             </div>
             <div className="story-copy">
               <span className="eyebrow">Nossa história 🍿🤎</span>
@@ -714,14 +721,20 @@ function Home({ products, addToCart }: { products: Product[]; addToCart: (produc
           </div>
           <div className="story-people">
             <article className="person-card">
+              <div className="person-photo">
+                <img src="/andressa-carolina.jpg" alt="Andressa Carolina Neves" />
+              </div>
               <div>
                 <small>Produção & qualidade</small>
-                <h3>Andressa Neves</h3>
+                <h3>Andressa Carolina Neves</h3>
                 <p>Andressa é o coração da produção da Pipocas Carolinas. É ela quem transforma ingredientes selecionados em pipocas gourmet irresistíveis, cuidando de cada etapa: do preparo à caramelização, da finalização à embalagem.</p>
                 <p>Seu carinho e atenção garantem que cada cliente receba um produto feito com qualidade, capricho e muito amor.</p>
               </div>
             </article>
             <article className="person-card">
+              <div className="person-photo">
+                <img src="/paloma-carolina.jpg" alt="Paloma Carolina" />
+              </div>
               <div>
                 <small>Marketing & comunicação</small>
                 <h3>Paloma Carolina</h3>
@@ -776,15 +789,15 @@ function ProductOptionsModal({
   const [error, setError] = useState('')
 
   const price = resolvePrice(product, selected)
-  const flavorNeed = requiredFlavorCount(product, selected)
+  const limits = flavorLimits(product, selected)
 
   useEffect(() => {
-    if (flavorNeed == null) return
+    if (limits == null) return
     setSelected((current) => ({
       ...current,
-      flavors: (current.flavors || []).slice(0, flavorNeed),
+      flavors: (current.flavors || []).slice(0, limits.max),
     }))
-  }, [flavorNeed])
+  }, [limits?.max])
 
   function toggleChoice(group: OptionGroup, label: string) {
     setError('')
@@ -795,7 +808,7 @@ function ProductOptionsModal({
       const exists = currentValues.includes(label)
       if (exists) return { ...current, [group.id]: currentValues.filter((item) => item !== label) }
 
-      const max = group.id === 'flavors' && flavorNeed ? flavorNeed : (group.max || group.choices.length)
+      const max = group.id === 'flavors' && limits ? limits.max : (group.max || group.choices.length)
       if (currentValues.length >= max) {
         setError(`Você pode escolher no máximo ${max} ${group.label.toLowerCase()}.`)
         return current
@@ -807,8 +820,8 @@ function ProductOptionsModal({
   function submit() {
     for (const group of product.options || []) {
       const values = selected[group.id] || []
-      const min = group.id === 'flavors' && flavorNeed ? flavorNeed : (group.min ?? (group.type === 'single' ? 1 : 0))
-      const max = group.id === 'flavors' && flavorNeed ? flavorNeed : (group.max || group.choices.length)
+      const min = group.id === 'flavors' && limits ? limits.min : (group.min ?? (group.type === 'single' ? 1 : 0))
+      const max = group.id === 'flavors' && limits ? limits.max : (group.max || group.choices.length)
 
       if (values.length < min) {
         setError(`Selecione ${min === 1 ? 'uma opção de' : `${min}`} ${group.label.toLowerCase()}.`)
@@ -849,7 +862,7 @@ function ProductOptionsModal({
           </div>
 
           {(product.options || []).map((group) => {
-            const max = group.id === 'flavors' && flavorNeed ? flavorNeed : group.max
+            const max = group.id === 'flavors' && limits ? limits.max : group.max
             const values = selected[group.id] || []
             return (
               <div className="option-group" key={group.id}>
